@@ -11,7 +11,8 @@ Inspired by:
 
 It should compile without the XCode GUI via _make(1)_.
 
-NB: The kext uses the kernel directly (not via the KPI ABI), so it is strongly kernel version dependent and has to be rebuilt after every version change.
+NB: The kext uses the kernel directly (not via the KPI ABI), so it is strongly kernel version dependent and has to be rebuilt after every version change, see
+[mkinfo.sh](mkinfo.sh).
 
 Installing and loading under today's OSX requires either SPI switched off.
 
