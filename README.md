@@ -13,8 +13,9 @@ It should compile without the XCode GUI via _make(1)_.
 
 NB: The kext uses the kernel directly (not via the KPI ABI), so it is strongly kernel version dependent and has to be rebuilt after every version change.
 
-Installing and loading under today's OSX requires either SPI switched off, which I strongly discourage, or
-signing via the _codesign(1)_ tool, perhaps with a self-signed CA, certificate installed locally.
+Installing and loading under today's OSX requires either SPI switched off.
+
+NB: Signing via the _codesign(1)_ tool, perhaps with a self-signed CA, certificate installed locally just won't work.
 
 Special thanks to Robert Watson of the FreeBSD project for his marvelous 
 [kernel FXR](http://fxr.watson.org/fxr) online.
