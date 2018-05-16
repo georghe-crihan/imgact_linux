@@ -7,9 +7,9 @@ EXTROOT = /Library/Extensions
 #SYSROOT = $(SDK_ROOT)/SDKs/MacOSX10.4u.sdk
 #OSX_VERSION = 10.4
 #SDK_ROOT = /Developer.4.6.2/Xcode.app/Contents/Developer
-SDK_ROOT = /Users/mac/Downloads/Xcode.app/Contents/Developer
-SYSROOT = $(SDK_ROOT)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk
-OSX_VERSION = 10.12
+SDK_ROOT = /Developer
+SYSROOT = $(SDK_ROOT)/SDKs/MacOSX10.6.sdk
+OSX_VERSION = 10.6
 
 #CC = $(SDK_ROOT)/usr/bin/gcc-4.0
 #LD = $(SDK_ROOT)/usr/bin/gcc-4.0
@@ -48,9 +48,15 @@ INCS += -I$(SYSROOT)/usr/include \
 	-I.
 
 KEXT_OBJS = \
-	imgact_linux.o
+	imgact_linux.o \
+	kernel_resolver.o
 
 all: imgact_linux.kmod 
+
+#DEFS +=-DXXX=1
+
+kernel_resolver.o: kernel_resolver.c
+	$(CC) $(ARCH) -isysroot $(SYSROOT) -no-cpp-precomp -nostdinc $(CFLAGS) $(CFLAGS_KERN) $(DEFS) $(DEFS_KERN) $(KERN_INCS) $(INCS) $(WARNS) -c -o kernel_resolver.o kernel_resolver.c 
 
 imgact_linux.o: imgact_linux.c
 	$(CC) $(ARCH) -isysroot $(SYSROOT) -no-cpp-precomp -nostdinc $(CFLAGS) $(CFLAGS_KERN) $(DEFS) $(DEFS_KERN) $(KERN_INCS) $(INCS) $(WARNS) -c -o imgact_linux.o imgact_linux.c 
@@ -59,7 +65,7 @@ imgact_linux.kmod: $(KEXT_OBJS)
 	$(LD) $(ARCH) -isysroot $(SYSROOT) \
 		-mmacosx-version-min=$(OSX_VERSION) \
 		-Xlinker -kext \
-		-nostdlib -lkmodc++ \
+		-nostdlib -r -mlong-branch -static -fno-builtin \
 		-lkmod -lcc_kext -o imgact_linux.kmod $(KEXT_OBJS)
 
 Info.plist:
@@ -76,7 +82,7 @@ codesign:
 	sudo /usr/bin/codesign --force --sign 'Self-signed certificate' \
           $(EXTROOT)/imgact_linux.kext
 
-test: install codesign
+test: install
 	sudo kextutil -t -v 6 $(EXTROOT)/imgact_linux.kext
 
 clean:

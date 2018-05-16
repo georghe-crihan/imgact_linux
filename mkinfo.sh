@@ -29,8 +29,18 @@ cat <<EOP > "${1}"
 	<string>1.0.0d1</string>
 	<key>OSBundleLibraries</key>
 	<dict>
+		<key>com.apple.kpi.libkern</key>
+                <string>8.0.0b2</string>
+                <key>com.apple.kpi.bsd</key>
+                <string>8.0.0b2</string>
+                <key>com.apple.kpi.unsupported</key>
+                <string>8.0.0b2</string>
+		<key>com.apple.kpi.iokit</key>	
+                <string>8.0.0b2</string>
+<!-- Alas, this is no longer permitted in 64 bit world...
 		<key>com.apple.kernel</key>
 		<string>${KERNEL_VERSION}</string>
+-->
 	</dict>
 </dict>
 </plist>

@@ -21,6 +21,9 @@ static char interp_path[] = "/usr/local/bin/checkargs";
 // Compatibility with older kernels
 #define ip_interp_buffer ip_interp_name
 
+#define SIZE_MAXPTR             8                               /* 64 bits */
+#define SIZE_IMG_STRSPACE       (NCARGS - 2 * SIZE_MAXPTR)
+
 /*
  * For #! interpreter parsing
  */
@@ -29,13 +32,94 @@ static char interp_path[] = "/usr/local/bin/checkargs";
 
 typedef int (*ex_imgact_t)(struct image_params *);
 
-extern struct execsw {
+//#ifdef XXX 
+static
+struct execsw {
 	int (*ex_imgact)(struct image_params *);
 	const char *ex_name;
-} execsw[];
+} *execsw;
+//#endif
 
-ex_imgact_t orig_shell_imgact;
-int orig_shell_entry = -1;
+static ex_imgact_t orig_shell_imgact;
+static int orig_shell_entry = -1;
+
+#if 0
+static int
+exec_reset_save_path(struct image_params *imgp)
+{
+        imgp->ip_strendp = imgp->ip_strings;
+        imgp->ip_argspace = NCARGS;
+        imgp->ip_strspace = ( NCARGS + PAGE_SIZE );
+
+        return (0);
+}
+#else
+/*
+ * exec_save_path
+ *
+ * To support new app package launching for Mac OS X, the dyld needs the
+ * first argument to execve() stored on the user stack.
+ *
+ * Save the executable path name at the top of the strings area and set
+ * the argument vector pointer to the location following that to indicate
+ * the start of the argument and environment tuples, setting the remaining
+ * string space count to the size of the string area minus the path length
+ * and a reserve for two pointers.
+ *
+ * Parameters;	struct image_params *		image parameter block
+ *		char *				path used to invoke program
+ *		uio_seg				segment where path is located
+ *
+ * Returns:	int			0	Success
+ *					!0	Failure: error number
+ * Implicit returns:
+ *		(imgp->ip_strings)		saved path
+ *		(imgp->ip_strspace)		space remaining in ip_strings
+ *		(imgp->ip_argv)			beginning of argument list
+ *		(imgp->ip_strendp)		start of remaining copy area
+ *
+ * Note:	We have to do this before the initial namei() since in the
+ *		path contains symbolic links, namei() will overwrite the
+ *		original path buffer contents.  If the last symbolic link
+ *		resolved was a relative pathname, we would lose the original
+ *		"path", which could be an absolute pathname. This might be
+ *		unacceptable for dyld.
+ */
+static int
+exec_save_path(struct image_params *imgp, user_addr_t path, /*uio_seg*/int seg)
+{
+	int error;
+	size_t	len;
+	char *kpath = CAST_DOWN(char *,path);	/* SAFE */
+
+	imgp->ip_strendp = imgp->ip_strings;
+	imgp->ip_strspace = SIZE_IMG_STRSPACE;
+
+	len = MIN(MAXPATHLEN, imgp->ip_strspace);
+
+	switch( seg) {
+	case UIO_USERSPACE32:
+	case UIO_USERSPACE64:	/* Same for copyin()... */
+		error = copyinstr(path, imgp->ip_strings, len, &len);
+		break;
+	case UIO_SYSSPACE32:
+		error = copystr(kpath, imgp->ip_strings, len, &len);
+		break;
+	default:
+		error = EFAULT;
+		break;
+	}
+
+	if (!error) {
+		imgp->ip_strendp += len;
+		imgp->ip_strspace -= len;
+		imgp->ip_argv = imgp->ip_strendp;
+	}
+
+	return(error);
+}
+#endif
+
 
 /*
  * exec_shell_imgact
@@ -168,7 +252,7 @@ my_exec_shell_imgact(struct image_params *imgp)
 		*interp++ = *ihp;
 	*interp = '\0';
 
-	exec_reset_save_path(imgp);
+//	exec_reset_save_path(imgp);
 	exec_save_path(imgp, CAST_USER_ADDR_T(imgp->ip_interp_buffer),
 							UIO_SYSSPACE);
 
@@ -209,8 +293,11 @@ my_exec_shell_imgact(struct image_params *imgp)
 	return (-3);
 }
 
-kern_return_t Untitled_start (kmod_info_t * ki, void * d) {
+kern_return_t imgact_linux_start (kmod_info_t * ki, void * d) {
 	int e;
+        execsw = (struct execsw *)lookup_symbol("execsw");
+        printf("execsw[] located @ %llx.\n", execsw);
+#ifdef XXX
 	for (e = 0; execsw[e].ex_name!=NULL; e++) {
 		printf("%s %d\n", execsw[e].ex_name, e);
 		if (!strcmp("Interpreter Script", execsw[e].ex_name)) {
@@ -219,14 +306,28 @@ kern_return_t Untitled_start (kmod_info_t * ki, void * d) {
 			execsw[e].ex_imgact = my_exec_shell_imgact;
 		}
 	}
-	
+#endif	
     printf("exec_shell_imgact() rerouted.\n");
     return KERN_SUCCESS;
 }
 
 
-kern_return_t Untitled_stop (kmod_info_t * ki, void * d) {
-	execsw[orig_shell_entry].ex_imgact = orig_shell_imgact;
+kern_return_t imgact_linux_stop (kmod_info_t * ki, void * d) {
+#ifdef XXX
+    execsw[orig_shell_entry].ex_imgact = orig_shell_imgact;
+#endif
     printf("Shell image activator restored.\n");
     return KERN_SUCCESS;
 }
+
+
+extern kern_return_t _start(kmod_info_t *ki, void *data);
+extern kern_return_t _stop(kmod_info_t *ki, void *data);
+//__private_extern__ kern_return_t _start(kmod_info_t *ki, void *data);
+//__private_extern__ kern_return_t _stop(kmod_info_t *ki, void *data);
+//                 com.github.kext.imgact_linux 
+KMOD_EXPLICIT_DECL(com.github.kext.imgact_linux, "0.0.1", imgact_linux_start,
+		   imgact_linux_stop)
+__private_extern__ kmod_start_func_t *_realmain = imgact_linux_start;
+__private_extern__ kmod_stop_func_t *_antimain = imgact_linux_stop;
+__private_extern__ int _kext_apple_cc = __APPLE_CC__ ;
