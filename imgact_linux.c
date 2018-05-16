@@ -32,11 +32,10 @@ static char interp_path[] = "/usr/local/bin/checkargs";
 
 typedef int (*ex_imgact_t)(struct image_params *);
 
-extern
-struct execsw {
+extern struct execsw {
 	int (*ex_imgact)(struct image_params *);
 	const char *ex_name;
-} *execsw;
+} execsw[];
 
 static ex_imgact_t orig_shell_imgact;
 static int orig_shell_entry = -1;
