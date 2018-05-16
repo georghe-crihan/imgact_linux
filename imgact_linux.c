@@ -11,12 +11,21 @@
 #include <sys/kernel.h>
 #include <sys/stat.h>
 #include <sys/malloc.h>
-/#include <sys/imgact.h>
+#include <sys/imgact.h>
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <net/if.h>
 
 static char interp_path[] = "/usr/local/bin/checkargs";
+
+// Compatibility with older kernels
+#define ip_interp_buffer ip_interp_name
+
+/*
+ * For #! interpreter parsing
+ */
+#define IS_WHITESPACE(ch) ((ch == ' ') || (ch == '\t'))
+#define IS_EOL(ch) ((ch == '#') || (ch == '\n'))
 
 typedef int (*ex_imgact_t)(struct image_params *);
 
@@ -85,9 +94,11 @@ my_exec_shell_imgact(struct image_params *imgp)
 #endif	/* IMGPF_POWERPC */
 
 	imgp->ip_flags |= IMGPF_INTERPRET;
-	imgp->ip_interp_sugid_fd = -1;
+//FIXME: Compatibility
+//	imgp->ip_interp_sugid_fd = -1;
 	imgp->ip_interp_buffer[0] = '\0';
 
+#if 0
 	/* Check to see if SUGID scripts are permitted.  If they aren't then
 	 * clear the SUGID bits.
 	 * imgp->ip_vattr is known to be valid.
@@ -95,6 +106,7 @@ my_exec_shell_imgact(struct image_params *imgp)
 	if (sugid_scripts == 0) {
 		imgp->ip_origvattr->va_mode &= ~(VSUID | VSGID);
 	}
+#endif
 
 	/* Try to find the first non-whitespace character */
 	for( ihp = &vdata[2]; ihp < &vdata[IMG_SHSIZE]; ihp++ ) {
@@ -166,6 +178,8 @@ my_exec_shell_imgact(struct image_params *imgp)
 		*interp++ = *ihp;
 	*interp = '\0';
 
+// FIXME: compatibility
+#if 0
 	/*
 	 * If we have a SUID oder SGID script, create a file descriptor
 	 * from the vnode and pass /dev/fd/%d instead of the actual
@@ -190,6 +204,7 @@ my_exec_shell_imgact(struct image_params *imgp)
 
 		imgp->ip_interp_sugid_fd = fd;
 	}
+#endif
 
 	return (-3);
 }
