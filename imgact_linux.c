@@ -32,13 +32,11 @@ static char interp_path[] = "/usr/local/bin/checkargs";
 
 typedef int (*ex_imgact_t)(struct image_params *);
 
-//#ifdef XXX 
-static
+extern
 struct execsw {
 	int (*ex_imgact)(struct image_params *);
 	const char *ex_name;
 } *execsw;
-//#endif
 
 static ex_imgact_t orig_shell_imgact;
 static int orig_shell_entry = -1;
@@ -295,9 +293,8 @@ my_exec_shell_imgact(struct image_params *imgp)
 
 kern_return_t imgact_linux_start (kmod_info_t * ki, void * d) {
 	int e;
-        execsw = (struct execsw *)lookup_symbol("execsw");
+//        execsw = (struct execsw *)lookup_symbol("_execsw");
         printf("execsw[] located @ %llx.\n", execsw);
-#ifdef XXX
 	for (e = 0; execsw[e].ex_name!=NULL; e++) {
 		printf("%s %d\n", execsw[e].ex_name, e);
 		if (!strcmp("Interpreter Script", execsw[e].ex_name)) {
@@ -306,16 +303,13 @@ kern_return_t imgact_linux_start (kmod_info_t * ki, void * d) {
 			execsw[e].ex_imgact = my_exec_shell_imgact;
 		}
 	}
-#endif	
     printf("exec_shell_imgact() rerouted.\n");
     return KERN_SUCCESS;
 }
 
 
 kern_return_t imgact_linux_stop (kmod_info_t * ki, void * d) {
-#ifdef XXX
     execsw[orig_shell_entry].ex_imgact = orig_shell_imgact;
-#endif
     printf("Shell image activator restored.\n");
     return KERN_SUCCESS;
 }

@@ -53,8 +53,6 @@ KEXT_OBJS = \
 
 all: imgact_linux.kmod 
 
-#DEFS +=-DXXX=1
-
 kernel_resolver.o: kernel_resolver.c
 	$(CC) $(ARCH) -isysroot $(SYSROOT) -no-cpp-precomp -nostdinc $(CFLAGS) $(CFLAGS_KERN) $(DEFS) $(DEFS_KERN) $(KERN_INCS) $(INCS) $(WARNS) -c -o kernel_resolver.o kernel_resolver.c 
 
@@ -72,6 +70,12 @@ Info.plist:
 	./mkinfo.sh Info.plist
 
 install: Info.plist imgact_linux.kmod
+	sudo rm -rf ${EXTROOT}/execsw_proxy.kext
+	sudo mkdir -p ${EXTROOT}/execsw_proxy.kext/Contents/MacOS
+	sudo cp execsw_proxy ${EXTROOT}/execsw_proxy.kext/Contents/MacOS/execsw_proxy
+	sudo cp Proxy.plist ${EXTROOT}/execsw_proxy.kext/Contents/Info.plist
+	sudo chown -R root:wheel ${EXTROOT}/execsw_proxy.kext
+	# Imgact
 	sudo rm -rf $(EXTROOT)/imgact_linux.kext
 	sudo mkdir -p $(EXTROOT)/imgact_linux.kext/Contents/MacOS 
 	sudo cp imgact_linux.kmod $(EXTROOT)/imgact_linux.kext/Contents/MacOS/imgact_linux
@@ -83,7 +87,7 @@ codesign:
           $(EXTROOT)/imgact_linux.kext
 
 test: install
-	sudo kextutil -t -v 6 $(EXTROOT)/imgact_linux.kext
+	sudo kextutil -d ${EXTROOT} -t -v 6 $(EXTROOT)/imgact_linux.kext
 
 clean:
 	rm -f $(KEXT_OBJS)

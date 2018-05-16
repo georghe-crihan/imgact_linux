@@ -27,9 +27,11 @@ cat <<EOP > "${1}"
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>1.0.0d1</string>
-	<key>OSBundleLibraries</key>
+	<key>OSBundleLibraries</key>	
 	<dict>
-		<key>com.apple.kpi.libkern</key>
+                <key>com.github.kext.execsw_proxy</key>
+				<string>10.0.0</string>
+			    <key>com.apple.kpi.libkern</key>
                 <string>8.0.0b2</string>
                 <key>com.apple.kpi.bsd</key>
                 <string>8.0.0b2</string>
