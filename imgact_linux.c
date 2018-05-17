@@ -187,7 +187,9 @@ my_exec_shell_imgact(struct image_params *imgp)
 	if (elf_check_header(hdr) != 0 || hdr->e_type != ET_EXEC)
 		return (orig_shell_imgact(imgp));
 
-	printf("ELF brand (OS ABI): %x\n", hdr->e_ident[EI_OSABI]);
+        if (kdebug_enable)
+	    printf("ELF brand (OS ABI): %x\n", hdr->e_ident[EI_OSABI]);
+
 	// FIXME: Further copy the Noah interpreter command line and parameters
 	return (orig_shell_imgact(imgp));
 
