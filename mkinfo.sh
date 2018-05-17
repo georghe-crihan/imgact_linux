@@ -31,7 +31,7 @@ cat <<EOP > "${1}"
 	<key>OSBundleLibraries</key>
 	<dict>
 EOP
-if [ ${ARCH} == "x86_64" ]; then
+if [ "${ARCH}x" == "x86_64x" ]; then
 cat <<EOP >> "${1}"
                 <key>com.github.kext.execsw_proxy</key>
                 <string>10.0.0</string>
