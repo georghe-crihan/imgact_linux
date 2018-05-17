@@ -20,17 +20,8 @@
 // Maybe sometime add a sysctl for setting interp_bufr...
 static char interp_bufr[IMG_SHSIZE];
 
-// Compatibility with older kernels
-#define ip_interp_buffer ip_interp_name
-
 #define SIZE_MAXPTR             8                               /* 64 bits */
 #define SIZE_IMG_STRSPACE       (NCARGS - 2 * SIZE_MAXPTR)
-
-/*
- * For interpreter parsing
- */
-#define IS_WHITESPACE(ch) ((ch == ' ') || (ch == '\t'))
-#define IS_EOL(ch) (ch == '\0')
 
 typedef int (*ex_imgact_t)(struct image_params *);
 
@@ -41,18 +32,6 @@ extern struct execsw {
 
 static ex_imgact_t orig_shell_imgact;
 static int orig_shell_entry = -1;
-
-#ifdef FIXME
-static int
-exec_reset_save_path(struct image_params *imgp)
-{
-        imgp->ip_strendp = imgp->ip_strings;
-        imgp->ip_argspace = NCARGS;
-        imgp->ip_strspace = ( NCARGS + PAGE_SIZE );
-
-        return (0);
-}
-#endif
 
 /*
  * exec_save_path
@@ -68,10 +47,13 @@ exec_reset_save_path(struct image_params *imgp)
  *
  * Parameters;	struct image_params *		image parameter block
  *		char *				path used to invoke program
- *		uio_seg				segment where path is located
+ *		int				segment from which path comes
  *
  * Returns:	int			0	Success
- *					!0	Failure: error number
+ *		EFAULT				Bad address
+ *	copy[in]str:EFAULT			Bad address
+ *	copy[in]str:ENAMETOOLONG		Filename too long
+ *
  * Implicit returns:
  *		(imgp->ip_strings)		saved path
  *		(imgp->ip_strspace)		space remaining in ip_strings
@@ -86,7 +68,7 @@ exec_reset_save_path(struct image_params *imgp)
  *		unacceptable for dyld.
  */
 static int
-exec_save_path(struct image_params *imgp, user_addr_t path, /*uio_seg*/int seg)
+exec_save_path(struct image_params *imgp, user_addr_t path, int seg)
 {
 	int error;
 	size_t	len;
@@ -97,12 +79,12 @@ exec_save_path(struct image_params *imgp, user_addr_t path, /*uio_seg*/int seg)
 
 	len = MIN(MAXPATHLEN, imgp->ip_strspace);
 
-	switch( seg) {
+	switch(seg) {
 	case UIO_USERSPACE32:
 	case UIO_USERSPACE64:	/* Same for copyin()... */
 		error = copyinstr(path, imgp->ip_strings, len, &len);
 		break;
-	case UIO_SYSSPACE32:
+	case UIO_SYSSPACE:
 		error = copystr(kpath, imgp->ip_strings, len, &len);
 		break;
 	default:
@@ -164,12 +146,17 @@ my_exec_shell_imgact(struct image_params *imgp)
 	const Elf_Ehdr *hdr = (const Elf_Ehdr *) imgp->ip_vdata;
 	char *vdata = interp_bufr;
 	char *ihp;
-	char *line_startp, *line_endp;
+	char *line_endp;
 	char *interp;
+#ifdef FIXME
+	char temp[16];
 	proc_t p;
 	struct fileproc *fp;
 	int fd;
 	int error;
+	size_t len;
+#endif
+
 
 	/*
 	 * Do we have a valid ELF header ?
@@ -186,87 +173,68 @@ my_exec_shell_imgact(struct image_params *imgp)
 #endif	/* IMGPF_POWERPC */
 
 	imgp->ip_flags |= IMGPF_INTERPRET;
-//FIXME: Compatibility
-//	imgp->ip_interp_sugid_fd = -1;
-	imgp->ip_interp_buffer[0] = '\0';
-// ???
+
 #ifdef FIXME
-	/* Check to see if SUGID scripts are permitted.  If they aren't then
+        /* Check to see if SUGID scripts are permitted.  If they aren't then
 	 * clear the SUGID bits.
 	 * imgp->ip_vattr is known to be valid.
-	 */
-	if (sugid_scripts == 0) {
-		imgp->ip_origvattr->va_mode &= ~(VSUID | VSGID);
+         */
+        if (sugid_scripts == 0) {
+	   imgp->ip_origvattr->va_mode &= ~(VSUID | VSGID);
 	}
 #endif
 
-	/* Try to find the first non-whitespace character */
-	for( ihp = &vdata[2]; ihp < &vdata[IMG_SHSIZE]; ihp++ ) {
-		if (IS_EOL(*ihp)) {
-			/* Did not find interpreter, "#!\n" */
+	/* Find the nominal end of the interpreter line */
+	for( ihp = &vdata[0]; *ihp != '\0'; ihp++) {
+		if (ihp >= &vdata[IMG_SHSIZE])
 			return (ENOEXEC);
-		} else if (IS_WHITESPACE(*ihp)) {
-			/* Whitespace, like "#!    /bin/sh\n", keep going. */
-		} else {
-			/* Found start of interpreter */
-			break;
-		}
 	}
 
-	if (ihp == &vdata[IMG_SHSIZE]) {
-		/* All whitespace, like "#!           " */
-		return (ENOEXEC);
-	}
-
-	line_startp = ihp;
-
-	/* Try to find the end of the interpreter+args string */
-	for ( ; ihp < &vdata[IMG_SHSIZE]; ihp++ ) {
-		if (IS_EOL(*ihp)) {
-			/* Got it */
-			break;
-		} else {
-			/* Still part of interpreter or args */
-		}
-	}
-
-	if (ihp == &vdata[IMG_SHSIZE]) {
-		/* A long line, like "#! blah blah blah" without end */
-		return (ENOEXEC);
-	}
-
-	/* Backtrack until we find the last non-whitespace */
-	while (IS_EOL(*ihp) || IS_WHITESPACE(*ihp)) {
-		ihp--;
-	}
-
-	/* The character after the last non-whitespace is our logical end of line */
-	line_endp = ihp + 1;
+	line_endp = ihp;
+	ihp = &vdata[0];
+	/* Skip over leading spaces - until the interpreter name */
+	while ( ihp < line_endp && ((*ihp == ' ') || (*ihp == '\t')))
+		ihp++;
 
 	/*
-	 * Now we have pointers to the usable part of:
-	 *
-	 * "#!  /usr/bin/int first    second   third    \n"
-	 *      ^ line_startp                       ^ line_endp
+	 * Find the last non-whitespace character before the end of line or
+	 * the beginning of a comment; this is our new end of line.
 	 */
+	for (;line_endp > ihp && ((*line_endp == ' ') || (*line_endp == '\t')); line_endp--)
+		continue;
+
+	/* Empty? */
+	if (line_endp == ihp)
+		return (ENOEXEC);
 
 	/* copy the interpreter name */
-	interp = imgp->ip_interp_buffer;
-	for ( ihp = line_startp; (ihp < line_endp) && !IS_WHITESPACE(*ihp); ihp++)
-		*interp++ = *ihp;
+	interp = imgp->ip_interp_name;
+	while ((ihp < line_endp) && (*ihp != ' ') && (*ihp != '\t'))
+		*interp++ = *ihp++;
 	*interp = '\0';
 
-//	exec_reset_save_path(imgp);
-	exec_save_path(imgp, CAST_USER_ADDR_T(imgp->ip_interp_buffer),
+	exec_save_path(imgp, CAST_USER_ADDR_T(imgp->ip_interp_name),
 							UIO_SYSSPACE);
 
-	/* Copy the entire interpreter + args for later processing into argv[] */
-	interp = imgp->ip_interp_buffer;
-	for ( ihp = line_startp; (ihp < line_endp); ihp++)
-		*interp++ = *ihp;
-	*interp = '\0';
+	ihp = &vdata[0];
+	while (ihp < line_endp) {
+		/* Skip leading whitespace before each argument */
+		while ((*ihp == ' ') || (*ihp == '\t'))
+			ihp++;
 
-// compatibility
+		if (ihp >= line_endp)
+			break;
+
+		/* We have an argument; copy it */
+		while ((ihp < line_endp) && (*ihp != ' ') && (*ihp != '\t')) {
+			*imgp->ip_strendp++ = *ihp++;
+			imgp->ip_strspace--;
+		}
+		*imgp->ip_strendp++ = 0;
+		imgp->ip_strspace--;
+		imgp->ip_argc++;
+	}
+
 #ifdef FIXME
 	/*
 	 * If we have a SUID oder SGID script, create a file descriptor
@@ -290,17 +258,21 @@ my_exec_shell_imgact(struct image_params *imgp)
 		proc_fdunlock(p);
 		vnode_ref(imgp->ip_vp);
 
-		imgp->ip_interp_sugid_fd = fd;
+		snprintf(temp, sizeof(temp), "/dev/fd/%d", fd);
+		error = copyoutstr(temp, imgp->ip_user_fname, sizeof(temp), &len);
+		if (error)
+			return(error);
 	}
 #endif
 
 	return (-3);
 }
 
+
 kern_return_t imgact_linux_start (kmod_info_t * ki, void * d) {
 	int e;
 
-        strcpy(interp_bufr, interp_path);
+        strlcpy(interp_bufr, INTERP_PATH, sizeof(interp_bufr));
 	if (kdebug_enable)
         printf("execsw[] located @ %llx.\n", execsw);
 	for (e = 0; execsw[e].ex_name!=NULL; e++) {
