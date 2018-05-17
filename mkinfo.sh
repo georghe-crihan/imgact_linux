@@ -28,7 +28,7 @@ cat <<EOP > "${1}"
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>1.0.0d1</string>
-	<key>OSBundleLibraries</key>	
+	<key>OSBundleLibraries</key>
 	<dict>
 EOP
 if [ ${ARCH} == "x86_64" ]; then
@@ -41,7 +41,7 @@ cat <<EOP >> "${1}"
                 <string>8.0.0b2</string>
                 <key>com.apple.kpi.unsupported</key>
                 <string>8.0.0b2</string>
-		<key>com.apple.kpi.iokit</key>	
+                <key>com.apple.kpi.iokit</key>
                 <string>8.0.0b2</string>
 EOP
 else # Alas, this is no longer permitted in 64 bit world...
@@ -56,4 +56,3 @@ cat <<EOP >> "${1}"
 </dict>
 </plist>
 EOP
-

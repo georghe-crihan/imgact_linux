@@ -143,7 +143,7 @@ elf_check_header(const Elf_Ehdr *hdr)
 
 	if (hdr->e_version != ELF_TARG_VER)
 		return ENOEXEC;
-	
+
 	return 0;
 }
 
@@ -314,7 +314,6 @@ my_exec_shell_imgact(struct image_params *imgp)
 
 kern_return_t imgact_linux_start (kmod_info_t * ki, void * d) {
 	int e;
-//        execsw = (struct execsw *)lookup_symbol("_execsw");
 	if (kdebug_enable)
         printf("execsw[] located @ %llx.\n", execsw);
 	for (e = 0; execsw[e].ex_name!=NULL; e++) {
