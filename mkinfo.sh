@@ -1,6 +1,7 @@
 #!/bin/sh
 
 KERNEL_VERSION=$(uname -r)
+ARCH=$(uname -m)
 EXECUTABLE_NAME=imgact_linux
 PRODUCT_NAME=${EXECUTABLE_NAME}
 echo Producing Info.plist for ${KERNEL_VERSION}...
@@ -29,9 +30,12 @@ cat <<EOP > "${1}"
 	<string>1.0.0d1</string>
 	<key>OSBundleLibraries</key>	
 	<dict>
+EOP
+if [ ${ARCH} == "x86_64" ]; then
+cat <<EOP >> "${1}"
                 <key>com.github.kext.execsw_proxy</key>
-				<string>10.0.0</string>
-			    <key>com.apple.kpi.libkern</key>
+                <string>10.0.0</string>
+                <key>com.apple.kpi.libkern</key>
                 <string>8.0.0b2</string>
                 <key>com.apple.kpi.bsd</key>
                 <string>8.0.0b2</string>
@@ -39,11 +43,17 @@ cat <<EOP > "${1}"
                 <string>8.0.0b2</string>
 		<key>com.apple.kpi.iokit</key>	
                 <string>8.0.0b2</string>
-<!-- Alas, this is no longer permitted in 64 bit world...
+EOP
+else # Alas, this is no longer permitted in 64 bit world...
+cat <<EOP >> "${1}"
 		<key>com.apple.kernel</key>
 		<string>${KERNEL_VERSION}</string>
--->
+EOP
+fi
+
+cat <<EOP >> "${1}"
 	</dict>
 </dict>
 </plist>
 EOP
+

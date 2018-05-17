@@ -12,13 +12,20 @@
 #include <sys/stat.h>
 #include <sys/malloc.h>
 #include <sys/imgact.h>
-#if 0
-#include <sys/socket.h>
-#include <sys/sockio.h>
-#include <net/if.h>
-#endif
+#include <sys/kdebug.h>
 
-#include "elf_common.h"
+// NB: Do not support 32 bit ELF for now
+
+#include <sys/elf_common.h>
+#include <elf.h>
+
+#if __ELF_WORD_SIZE == 64
+# define Elf_Shdr       Elf64_Shdr
+# define Elf_Ehdr       Elf64_Ehdr
+#else
+# define Elf_Shdr       Elf32_Shdr
+# define Elf_Ehdr       Elf32_Ehdr
+#endif
 
 static char interp_path[] = "/usr/local/bin/checkargs";
 
@@ -164,6 +171,7 @@ elf_check_header(const Elf_Ehdr *hdr)
 static int
 my_exec_shell_imgact(struct image_params *imgp)
 {
+	const Elf_Ehdr *hdr = (const Elf_Ehdr *) imgp->ip_vdata;
 	char *vdata = imgp->ip_vdata;
 	char *ihp;
 	char *line_startp, *line_endp;
@@ -174,22 +182,14 @@ my_exec_shell_imgact(struct image_params *imgp)
 	int error;
 
 	/*
-	 * Make sure it's a shell script.  If we've already redirected
-	 * from an interpreted file once, don't do it again.
-	 *
-	 * Note: We disallow PowerPC, since the expectation is that we
-	 * may run a PowerPC interpreter, but not an interpret a PowerPC 
-	 * image.  This is consistent with historical behaviour.
+	 * Do we have a valid ELF header ?
 	 */
-	if (vdata[0] != '#' ||
-	    vdata[1] != '@' ||
-	    (imgp->ip_flags & IMGPF_INTERPRET) != 0) {
-	        return (orig_shell_imgact(imgp));
-//		return (-1);
-	}
+	if (elf_check_header(hdr) != 0 || hdr->e_type != ET_EXEC)
+		return (orig_shell_imgact(imgp));
 
-	printf("My shell activator called!\n");
-
+	printf("ELF brand (OS ABI): %x\n", hdr->e_ident[EI_OSABI]);
+	// FIXME: Further copy the Noah interpreter command line and parameters
+	return (orig_shell_imgact(imgp));
 
 #ifdef IMGPF_POWERPC
 	if ((imgp->ip_flags & IMGPF_POWERPC) != 0)
@@ -315,6 +315,7 @@ my_exec_shell_imgact(struct image_params *imgp)
 kern_return_t imgact_linux_start (kmod_info_t * ki, void * d) {
 	int e;
 //        execsw = (struct execsw *)lookup_symbol("_execsw");
+	if (kdebug_enable)
         printf("execsw[] located @ %llx.\n", execsw);
 	for (e = 0; execsw[e].ex_name!=NULL; e++) {
 		printf("%s %d\n", execsw[e].ex_name, e);
@@ -322,25 +323,25 @@ kern_return_t imgact_linux_start (kmod_info_t * ki, void * d) {
 			orig_shell_entry = e;
 			orig_shell_imgact = execsw[e].ex_imgact;
 			execsw[e].ex_imgact = my_exec_shell_imgact;
+			break;
 		}
 	}
-    printf("exec_shell_imgact() rerouted.\n");
+	if (kdebug_enable)
+		printf("exec_shell_imgact() rerouted.\n");
     return KERN_SUCCESS;
 }
 
 
 kern_return_t imgact_linux_stop (kmod_info_t * ki, void * d) {
     execsw[orig_shell_entry].ex_imgact = orig_shell_imgact;
-    printf("Shell image activator restored.\n");
+	if (kdebug_enable)
+        printf("Shell image activator restored.\n");
     return KERN_SUCCESS;
 }
 
 
 extern kern_return_t _start(kmod_info_t *ki, void *data);
 extern kern_return_t _stop(kmod_info_t *ki, void *data);
-//__private_extern__ kern_return_t _start(kmod_info_t *ki, void *data);
-//__private_extern__ kern_return_t _stop(kmod_info_t *ki, void *data);
-//                 com.github.kext.imgact_linux 
 KMOD_EXPLICIT_DECL(com.github.kext.imgact_linux, "0.0.1", imgact_linux_start,
 		   imgact_linux_stop)
 __private_extern__ kmod_start_func_t *_realmain = imgact_linux_start;

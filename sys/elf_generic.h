@@ -54,6 +54,8 @@
 #define __ElfN(x)	__CONCAT(__CONCAT(__CONCAT(Elf,__ELF_WORD_SIZE),_),x)
 #define __ELFN(x)	__CONCAT(__CONCAT(__CONCAT(ELF,__ELF_WORD_SIZE),_),x)
 #define __ElfType(x)	typedef __ElfN(x) __CONCAT(Elf_,x)
+#undef __ElfType
+#define __ElfType(x) typedef Elf64_##x Elf_##x
 
 __ElfType(Addr);
 __ElfType(Half);
@@ -61,7 +63,7 @@ __ElfType(Off);
 __ElfType(Sword);
 __ElfType(Word);
 __ElfType(Size);
-__ElfType(Hashelt);
+//__ElfType(Hashelt);
 __ElfType(Ehdr);
 __ElfType(Shdr);
 __ElfType(Phdr);

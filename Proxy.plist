@@ -7,7 +7,7 @@
 	<key>CFBundleExecutable</key>
 	<string>execsw_proxy</string>
 	<key>CFBundleGetInfoString</key>
-	<string>BSD Kernel Pseudoextension, Apple Computer Inc, 10.8.0</string>
+	<string>execsw_proxy Kernel Pseudoextension, 10.0.0</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.github.kext.execsw_proxy</string>
 	<key>CFBundleInfoDictionaryVersion</key>

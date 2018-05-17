@@ -65,7 +65,23 @@ imgact_linux.kmod: $(KEXT_OBJS)
 Info.plist:
 	./mkinfo.sh Info.plist
 
-proxy-install:
+execsw_proxy: Proxy.plist
+	# See https://github.com/slavaim/dl_kextsymboltool
+	# old MacOS X placed the kernel in the root directory
+	nm -gj /mach_kernel > allsymbols
+	# on the lates macOS the kernel can be found at /System/Library/Kernels
+	#nm -gj /System/Library/Kernels/kernel > allsymbols
+	echo "_execsw" > execsw_proxy.exports
+	# include any more symbols needed
+
+	dl_kextsymboltool -arch i386 -import allsymbols  -export execsw_proxy.exports -output execsw_proxy_32
+	dl_kextsymboltool -arch x86_64 -import allsymbols -export execsw_proxy.exports -output execsw_proxy_64
+
+	cp execsw_proxy_64 execsw_proxy
+	# or make a universal kext
+	#lipo -create execsw_proxy_32 execsw_proxy_64 -output execsw_proxy
+
+proxy-install: execsw_proxy
 	sudo rm -rf ${EXTROOT}/execsw_proxy.kext
 	sudo mkdir -p ${EXTROOT}/execsw_proxy.kext/Contents/MacOS
 	sudo cp execsw_proxy ${EXTROOT}/execsw_proxy.kext/Contents/MacOS/execsw_proxy
