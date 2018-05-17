@@ -14,7 +14,7 @@
 #include <sys/elf_common.h>
 #include <elf.h>
 
-static char interp_path[] = "/usr/local/bin/checkargs";
+static char interp_path[] = "/opt/local/libexec/noah -p -m /compat/linux -o /var/log/noah/output_%d.log -w /var/log/noah/warning_%d.log -s /var/log/noah/strace_%d.log";
 
 // Compatibility with older kernels
 #define ip_interp_buffer ip_interp_name
