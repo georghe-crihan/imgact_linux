@@ -12,9 +12,13 @@
 #include <sys/stat.h>
 #include <sys/malloc.h>
 #include <sys/imgact.h>
+#if 0
 #include <sys/socket.h>
 #include <sys/sockio.h>
 #include <net/if.h>
+#endif
+
+#include "elf_common.h"
 
 static char interp_path[] = "/usr/local/bin/checkargs";
 
@@ -117,6 +121,24 @@ exec_save_path(struct image_params *imgp, user_addr_t path, /*uio_seg*/int seg)
 }
 #endif
 
+
+static int
+elf_check_header(const Elf_Ehdr *hdr)
+{
+	if (!IS_ELF(*hdr) ||
+	    hdr->e_ident[EI_CLASS] != ELF_TARG_CLASS ||
+	    hdr->e_ident[EI_DATA] != ELF_TARG_DATA ||
+	    hdr->e_ident[EI_VERSION] != EV_CURRENT)
+		return ENOEXEC;
+
+	if (!ELF_MACHINE_OK(hdr->e_machine))
+		return ENOEXEC;
+
+	if (hdr->e_version != ELF_TARG_VER)
+		return ENOEXEC;
+	
+	return 0;
+}
 
 /*
  * exec_shell_imgact
