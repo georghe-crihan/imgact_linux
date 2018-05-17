@@ -5,6 +5,7 @@ OSX kext to allow running of linux binary executables (through Noah ABI).
 Inspired by: 
 * [xbinary](http://osxbook.com/software/xbinary),
 * [SyscallExt](http://osxbook.com/book/bonus/ancient/syscall) both by Amit Singh, 
+* [FreeBSD kernel exec_elf_imgact()](http://fxr.watson.org/fxr/source/kern/imgact_elf.c?v=FREEBSD4#L466)
 * [FreeBSD Linux ABI exec_linux_imgact()](http://fxr.watson.org/fxr/source/i386/linux/imgact_linux.c?v=FREEBSD4)(aka 'The Linuxolator'),
 * [XNU exec_shell_imgact()](http://fxr.watson.org/fxr/source/bsd/kern/kern_exec.c?v=xnu-1228#L416),
 * the [Noah Linux ABI project](https://github.com/linux-noah/noah).
