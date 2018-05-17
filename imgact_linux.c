@@ -14,7 +14,11 @@
 #include <sys/elf_common.h>
 #include <elf.h>
 
-static char interp_path[] = "/opt/local/libexec/noah -p -m /compat/linux -o /var/log/noah/output_%d.log -w /var/log/noah/warning_%d.log -s /var/log/noah/strace_%d.log";
+// Default path
+#define INTERP_PATH "/opt/local/libexec/noah -p -m /compat/linux -o /var/log/noah/output_%d.log -w /var/log/noah/warning_%d.log -s /var/log/noah/strace_%d.log"
+
+// Maybe sometime add a sysctl for setting interp_bufr...
+static char interp_bufr[IMG_SHSIZE];
 
 // Compatibility with older kernels
 #define ip_interp_buffer ip_interp_name
@@ -23,10 +27,10 @@ static char interp_path[] = "/opt/local/libexec/noah -p -m /compat/linux -o /var
 #define SIZE_IMG_STRSPACE       (NCARGS - 2 * SIZE_MAXPTR)
 
 /*
- * For #! interpreter parsing
+ * For interpreter parsing
  */
 #define IS_WHITESPACE(ch) ((ch == ' ') || (ch == '\t'))
-#define IS_EOL(ch) ((ch == '#') || (ch == '\n'))
+#define IS_EOL(ch) (ch == '\0')
 
 typedef int (*ex_imgact_t)(struct image_params *);
 
@@ -38,7 +42,7 @@ extern struct execsw {
 static ex_imgact_t orig_shell_imgact;
 static int orig_shell_entry = -1;
 
-#if 0
+#ifdef FIXME
 static int
 exec_reset_save_path(struct image_params *imgp)
 {
@@ -48,7 +52,8 @@ exec_reset_save_path(struct image_params *imgp)
 
         return (0);
 }
-#else
+#endif
+
 /*
  * exec_save_path
  *
@@ -113,8 +118,6 @@ exec_save_path(struct image_params *imgp, user_addr_t path, /*uio_seg*/int seg)
 
 	return(error);
 }
-#endif
-
 
 static int
 elf_check_header(const Elf_Ehdr *hdr)
@@ -159,7 +162,7 @@ static int
 my_exec_shell_imgact(struct image_params *imgp)
 {
 	const Elf_Ehdr *hdr = (const Elf_Ehdr *) imgp->ip_vdata;
-	char *vdata = imgp->ip_vdata;
+	char *vdata = interp_bufr;
 	char *ihp;
 	char *line_startp, *line_endp;
 	char *interp;
@@ -177,9 +180,6 @@ my_exec_shell_imgact(struct image_params *imgp)
         if (kdebug_enable)
 	    printf("ELF brand (OS ABI): %x\n", hdr->e_ident[EI_OSABI]);
 
-	// FIXME: Further copy the Noah interpreter command line and parameters
-	return (orig_shell_imgact(imgp));
-
 #ifdef IMGPF_POWERPC
 	if ((imgp->ip_flags & IMGPF_POWERPC) != 0)
 		  return (EBADARCH);
@@ -189,8 +189,8 @@ my_exec_shell_imgact(struct image_params *imgp)
 //FIXME: Compatibility
 //	imgp->ip_interp_sugid_fd = -1;
 	imgp->ip_interp_buffer[0] = '\0';
-
-#if 0
+// ???
+#ifdef FIXME
 	/* Check to see if SUGID scripts are permitted.  If they aren't then
 	 * clear the SUGID bits.
 	 * imgp->ip_vattr is known to be valid.
@@ -252,11 +252,7 @@ my_exec_shell_imgact(struct image_params *imgp)
 
 	/* copy the interpreter name */
 	interp = imgp->ip_interp_buffer;
-#if 0
 	for ( ihp = line_startp; (ihp < line_endp) && !IS_WHITESPACE(*ihp); ihp++)
-#else
-	for ( ihp = interp_path; *ihp != '\0'; ihp++)
-#endif
 		*interp++ = *ihp;
 	*interp = '\0';
 
@@ -270,8 +266,8 @@ my_exec_shell_imgact(struct image_params *imgp)
 		*interp++ = *ihp;
 	*interp = '\0';
 
-// FIXME: compatibility
-#if 0
+// compatibility
+#ifdef FIXME
 	/*
 	 * If we have a SUID oder SGID script, create a file descriptor
 	 * from the vnode and pass /dev/fd/%d instead of the actual
@@ -303,6 +299,8 @@ my_exec_shell_imgact(struct image_params *imgp)
 
 kern_return_t imgact_linux_start (kmod_info_t * ki, void * d) {
 	int e;
+
+        strcpy(interp_bufr, interp_path);
 	if (kdebug_enable)
         printf("execsw[] located @ %llx.\n", execsw);
 	for (e = 0; execsw[e].ex_name!=NULL; e++) {
