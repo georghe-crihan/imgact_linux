@@ -3,11 +3,6 @@
 #include <sys/systm.h>
 #include <sys/param.h>
 #include <sys/systm.h>
-#include <sys/filedesc.h>
-#include <sys/ioctl.h>
-#include <sys/proc.h>
-#include <sys/socketvar.h>
-#include <sys/uio.h>
 #include <sys/kernel.h>
 #include <sys/stat.h>
 #include <sys/malloc.h>
@@ -18,14 +13,6 @@
 
 #include <sys/elf_common.h>
 #include <elf.h>
-
-#if __ELF_WORD_SIZE == 64
-# define Elf_Shdr       Elf64_Shdr
-# define Elf_Ehdr       Elf64_Ehdr
-#else
-# define Elf_Shdr       Elf32_Shdr
-# define Elf_Ehdr       Elf32_Ehdr
-#endif
 
 static char interp_path[] = "/usr/local/bin/checkargs";
 
