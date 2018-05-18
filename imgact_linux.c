@@ -28,10 +28,17 @@ ex_imgact_t orig_shell_imgact;
 
 static int orig_shell_entry = -1;
 
+SYSCTL_NODE(_kern,        // our parent
+            OID_AUTO,     // automatically assign us an object ID
+            imgact_linux, // our name
+            CTLFLAG_RW,   // we will be creating children, therefore, read/write
+            0,            // handler function (none needed)
+            "imgact_linux sysctl hierarchy");
+
 SYSCTL_STRING(
-           _kern,
+           _kern_imgact_linux,
            OID_AUTO,
-           imgact_linux_interpreter_commandline,
+           interpreter_commandline,
            CTLTYPE_STRING | CTLFLAG_RW | CTLFLAG_KERN,
            &interp_bufr,
            sizeof(interp_bufr),
@@ -60,6 +67,7 @@ kern_return_t imgact_linux_start (kmod_info_t * ki, void * d) {
     int e;
 
     strlcpy(interp_bufr, INTERP_PATH, sizeof(interp_bufr));
+    sysctl_register_oid(&sysctl__kern_imgact_linux);
     sysctl_register_oid(&sysctl__kern_imgact_linux_interpreter_commandline);
 
     if (kdebug_enable)
@@ -83,6 +91,7 @@ kern_return_t imgact_linux_start (kmod_info_t * ki, void * d) {
 
 kern_return_t imgact_linux_stop (kmod_info_t * ki, void * d) {
     sysctl_unregister_oid(&sysctl__kern_imgact_linux_interpreter_commandline);
+    sysctl_unregister_oid(&sysctl__kern_imgact_linux);
     execsw[orig_shell_entry].ex_imgact = orig_shell_imgact;
 	if (kdebug_enable)
         printf("Shell image activator restored.\n");
