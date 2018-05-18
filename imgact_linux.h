@@ -4,6 +4,9 @@
 #include <sys/elf_common.h>
 #include <elf.h>
 
+/* Default path */
+#define INTERP_PATH "/opt/local/libexec/noah -e -m /compat/linux -o /var/log/noah/output_%d.log -w /var/log/noah/warning_%d.log -s /var/log/noah/strace_%d.log"
+
 typedef int (*ex_imgact_t)(struct image_params *);
 
 extern ex_imgact_t orig_shell_imgact;

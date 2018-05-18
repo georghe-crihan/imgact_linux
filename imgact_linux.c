@@ -8,6 +8,8 @@
 #include <sys/imgact.h>
 #include <sys/kdebug.h>
 
+#include <sys/sysctl.h>
+
 // NB: Do not support 32 bit ELF for now
 
 #include <sys/elf_common.h>
@@ -15,20 +17,26 @@
 
 #include "imgact_linux.h"
 
-// Default path
-#define INTERP_PATH "/opt/local/libexec/noah -e -m /compat/linux -o /var/log/noah/output_%d.log -w /var/log/noah/warning_%d.log -s /var/log/noah/strace_%d.log"
-
-// Maybe sometime add a sysctl for setting interp_bufr...
-char interp_bufr[IMG_SHSIZE];
-
 extern struct execsw {
 	int (*ex_imgact)(struct image_params *);
 	const char *ex_name;
 } execsw[];
 
+char interp_bufr[IMG_SHSIZE];
+
 ex_imgact_t orig_shell_imgact;
 
 static int orig_shell_entry = -1;
+
+SYSCTL_STRING(
+           _kern,
+           OID_AUTO,
+           imgact_linux_interpreter_commandline,
+           CTLTYPE_STRING | CTLFLAG_RW | CTLFLAG_KERN,
+           &interp_bufr,
+           sizeof(interp_bufr),
+           "ELF interpreter command line"
+           );
 
 int
 elf_check_header(const Elf_Ehdr *hdr)
@@ -49,26 +57,32 @@ elf_check_header(const Elf_Ehdr *hdr)
 }
 
 kern_return_t imgact_linux_start (kmod_info_t * ki, void * d) {
-	int e;
+    int e;
 
-        strlcpy(interp_bufr, INTERP_PATH, sizeof(interp_bufr));
-	if (kdebug_enable)
+    strlcpy(interp_bufr, INTERP_PATH, sizeof(interp_bufr));
+    sysctl_register_oid(&sysctl__kern_imgact_linux_interpreter_commandline);
+
+    if (kdebug_enable)
         printf("execsw[] located @ %llx.\n", execsw);
-	for (e = 0; execsw[e].ex_name!=NULL; e++) {
-		printf("%s %d\n", execsw[e].ex_name, e);
-		if (!strcmp("Interpreter Script", execsw[e].ex_name)) {
-			orig_shell_entry = e;
-			orig_shell_imgact = execsw[e].ex_imgact;
-			execsw[e].ex_imgact = my_exec_shell_imgact;
-			break;
-		}
-	}
-	if (kdebug_enable)
-		printf("exec_shell_imgact() rerouted.\n");
+
+    for (e = 0; execsw[e].ex_name!=NULL; e++) {
+        printf("%s %d\n", execsw[e].ex_name, e);
+        if (!strcmp("Interpreter Script", execsw[e].ex_name)) {
+            orig_shell_entry = e;
+            orig_shell_imgact = execsw[e].ex_imgact;
+            execsw[e].ex_imgact = my_exec_shell_imgact;
+            break;
+        }
+    }
+
+    if (kdebug_enable)
+        printf("exec_shell_imgact() rerouted.\n");
+
     return KERN_SUCCESS;
 }
 
 kern_return_t imgact_linux_stop (kmod_info_t * ki, void * d) {
+    sysctl_unregister_oid(&sysctl__kern_imgact_linux_interpreter_commandline);
     execsw[orig_shell_entry].ex_imgact = orig_shell_imgact;
 	if (kdebug_enable)
         printf("Shell image activator restored.\n");
