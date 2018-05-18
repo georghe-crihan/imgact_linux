@@ -1,6 +1,6 @@
 # imgact_linux
 
-OSX KEXT to allow running of linux binary executables (through Noah ABI)
+OSX KEXT to allow running of Linux binary executables (through Noah ABI)
 transparently.
 
 Its functionality is somewhat an OSX equivalent to that of Linux `binfmt-misc`.
@@ -33,7 +33,7 @@ The activator KEXT is strongly kernel version dependent and has to be rebuilt
 after every version change, see [mkinfo.sh](mkinfo.sh).
 
 Installing and loading under today's OSX requires either SPI switched off or
-an apple developer certificate.
+an Apple developer certificate.
 
 Also, read the next section carefully, before you proceed.
 
@@ -62,7 +62,7 @@ You have been warned!
 This work is inspired by:
 * [xbinary](http://osxbook.com/software/xbinary) and
 * [SyscallExt](http://osxbook.com/book/bonus/ancient/syscall) both by Amit Singh, 
-* [FreeBSD kernel exec_elf_imgact()](http://fxr.watson.org/fxr/source/kern/imgact_elf.c?v=FREEBSD4#L466)
+* [FreeBSD kernel exec_elf_imgact()](http://fxr.watson.org/fxr/source/kern/imgact_elf.c?v=FREEBSD4#L466),
 * [FreeBSD Linux ABI exec_linux_imgact()](http://fxr.watson.org/fxr/source/i386/linux/imgact_linux.c?v=FREEBSD4)(aka 'The Linuxolator'),
 * [XNU exec_shell_imgact()](http://fxr.watson.org/fxr/source/bsd/kern/kern_exec.c?v=xnu-1228#L416),
 * the [Noah Linux ABI project](https://github.com/linux-noah/noah),
@@ -122,20 +122,20 @@ version from the above
 if any, i.e. the function designated as _"Interpreter Script"_ image activator
 at the _execsw[]_ declarations at the top, as well as all its dependencies and
 all the necessary definitions. You might need to declare all but the activator
-function _static_ to avoid name conflicts within the kernel.
-5. Rename _exec_shell_imgact()_ to _my_exec_shell_imgact()_.
+function _static_ to avoid name conflicts within the kernel
+5. Rename _exec_shell_imgact()_ to _my_exec_shell_imgact()_
 6. You might need to add some more definitions in order to satisfy all of 
-the _my_exec_shell_imgact()_ dependencies.
+the _my_exec_shell_imgact()_ dependencies
 7. Make sure to include
 ``` c
 	const Elf_Ehdr *hdr = (const Elf_Ehdr *) imgp->ip_vdata;
 	char *vdata = interp_bufr;
 ```
 and exclude conflicting definitions to ensure proper parsing of the
-'shebang path' and its parameters.
+'shebang path' and its parameters
 
 8. Watch out for _vdata[2]_ as well as _\n_ and _#_  as line terminators, as
-it's no longer a 'shebang path', but a plain, c-string command line.
+it's no longer a 'shebang path', but a plain, c-string command line
 
 9. Replace the
 ``` c
@@ -173,4 +173,4 @@ You can always use the provided _exec_shell_imgact-*.c_ files as reference.
 ## Precompiled binaries
 See the [binaries](binaries) directory.
 
-Run the _install.sh xnu_version_ to install the appropriate KEXT.
+Run the _install.sh xnu-x.y.z_ to install the appropriate KEXT version.
