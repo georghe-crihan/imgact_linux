@@ -111,8 +111,10 @@ the _my_exec_shell_imgact()_ dependencies.
 ```
 and exclude conflicting definitions to ensure proper parsing of the
 'shebang path' and its parameters.
+
 8. Watch out for _vdata[2]_ as well as _\n_ and _#_  as line terminators, as
 it's no longer a 'shebang path', but a plain, c-string command line.
+
 9. Replace the
 ``` c
 	/*
