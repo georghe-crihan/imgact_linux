@@ -110,6 +110,9 @@
  */
 #define	EXECUTABLE_KEY "executable_path="
 
+static int sugid_scripts = 0;
+SYSCTL_INT (_kern, OID_AUTO, sugid_scripts, CTLFLAG_RW | CTLFLAG_LOCKED, &sugid_scripts, 0, "");
+
 /*
  * exec_save_path
  *
@@ -260,10 +263,9 @@ my_exec_shell_imgact(struct image_params *imgp)
 	imgp->ip_flags |= IMGPF_INTERPRET;
 
         imgp->ip_origvattr->va_mode  &= ~(VSUID | VSGID);
-//	imgp->ip_interp_sugid_fd = -1;
+	imgp->ip_interp_sugid_fd = -1;
 	imgp->ip_interp_buffer[0] = '\0';
 
-#ifdef FIXME
 	/* Check to see if SUGID scripts are permitted.  If they aren't then
 	 * clear the SUGID bits.
 	 * imgp->ip_vattr is known to be valid.
@@ -271,7 +273,6 @@ my_exec_shell_imgact(struct image_params *imgp)
 	if (sugid_scripts == 0) {
 		imgp->ip_origvattr->va_mode &= ~(VSUID | VSGID);
 	}
-#endif
 
 	/* Try to find the first non-whitespace character */
 	for( ihp = &vdata[0]; ihp < &vdata[IMG_SHSIZE]; ihp++ ) {
@@ -339,7 +340,7 @@ my_exec_shell_imgact(struct image_params *imgp)
 		*interp++ = *ihp;
 	*interp = '\0';
 
-#ifdef FIXME
+#if !SECURE_KERNEL && 0
 	/*
 	 * If we have an SUID or SGID script, create a file descriptor
 	 * from the vnode and pass /dev/fd/%d instead of the actual
