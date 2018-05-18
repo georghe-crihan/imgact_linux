@@ -139,11 +139,11 @@ check by
 	    printf("ELF brand (OS ABI): %x\n", hdr->e_ident[EI_OSABI]);
 ```
 10. You might need to comment out some of the more shell-activator-specific
-(i.e. SUID _/dev/fd/X_ tricks) parts of _my_exec_shell_imgact()_
+(e.g. SUID _/dev/fd/X_ tricks) parts of _my_exec_shell_imgact()_
 11. Make sure you chain to the _orig_shell_imgact()_ on header mismatch to
 allow the system run normal shell scripts
 12. _return (-3)_ on successful completion, to launch the interpreter proper.
 
 YMMV, as it's a non-trivial, creative process!
 
-You can always use the provided exec_shell_imgact-*.c files as reference.
+You can always use the provided _exec_shell_imgact-*.c_ files as reference.
