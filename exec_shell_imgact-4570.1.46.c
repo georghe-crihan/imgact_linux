@@ -1,3 +1,102 @@
+//#include <machine/reg.h>
+//#include <machine/cpu_capabilities.h>
+
+#include <sys/param.h>
+#include <sys/systm.h>
+#include <sys/filedesc.h>
+#include <sys/kernel.h>
+//#include <sys/proc_internal.h>
+#include <sys/kauth.h>
+#include <sys/user.h>
+#include <sys/socketvar.h>
+#include <sys/malloc.h>
+#include <sys/namei.h>
+//#include <sys/mount_internal.h>
+//#include <sys/vnode_internal.h>		
+//#include <sys/file_internal.h>
+#include <sys/stat.h>
+//#include <sys/uio_internal.h>
+#include <sys/acct.h>
+//#include <sys/exec.h>
+#include <sys/kdebug.h>
+#include <sys/signal.h>
+//#include <sys/aio_kern.h>
+//#include <sys/sysproto.h>
+//#include <sys/persona.h>
+//#include <sys/reason.h>
+#if SYSV_SHM
+#include <sys/shm_internal.h>		/* shmexec() */
+#endif
+//#include <sys/ubc_internal.h>		/* ubc_map() */
+#include <sys/spawn.h>
+//#include <sys/spawn_internal.h>
+//#include <sys/process_policy.h>
+//#include <sys/codesign.h>
+#include <sys/random.h>
+//#include <crypto/sha1.h>
+
+#include <libkern/libkern.h>
+
+//#include <security/audit/audit.h>
+
+#include <ipc/ipc_types.h>
+
+#include <mach/mach_types.h>
+#include <mach/port.h>
+#include <mach/task.h>
+#include <mach/task_access.h>
+#include <mach/thread_act.h>
+#include <mach/vm_map.h>
+#include <mach/mach_vm.h>
+#include <mach/vm_param.h>
+
+#include <kern/sched_prim.h> /* thread_wakeup() */
+//#include <kern/affinity.h>
+#include <kern/assert.h>
+#include <kern/task.h>
+#include <kern/coalition.h>
+#include <kern/policy_internal.h>
+//#include <kern/kalloc.h>
+
+#include <os/log.h>
+
+#if CONFIG_MACF
+#include <security/mac_framework.h>
+#include <security/mac_mach_internal.h>
+#endif
+
+#include <vm/vm_map.h>
+#include <vm/vm_kern.h>
+//#include <vm/vm_protos.h>
+#include <vm/vm_kern.h>
+#include <vm/vm_fault.h>
+#include <vm/vm_pageout.h>
+
+//#include <kdp/kdp_dyld.h>
+
+//#include <machine/pal_routines.h>
+
+#include <pexpert/pexpert.h>
+
+#if CONFIG_MEMORYSTATUS
+#include <sys/kern_memorystatus.h>
+#endif
+
+#include <kern/thread.h>
+#include <kern/task.h>
+//#include <kern/ast.h>
+//#include <kern/mach_loader.h>
+//#include <kern/mach_fat.h>
+//#include <mach-o/fat.h>
+//#include <mach-o/loader.h>
+#include <machine/vmparam.h>
+#include <sys/imgact.h>
+#include <sys/vnode.h>
+
+#include <sys/sdt.h>
+
+#include "imgact_linux.h"
+
 /*
  * For #! interpreter parsing
  */
@@ -135,7 +234,7 @@ exec_reset_save_path(struct image_params *imgp)
  * A return value other than -1 indicates subsequent image activators should
  * not be given the opportunity to attempt to activate the image.
  */
-static int
+int
 my_exec_shell_imgact(struct image_params *imgp)
 {
 	const Elf_Ehdr *hdr = (const Elf_Ehdr *) imgp->ip_vdata;
@@ -159,6 +258,8 @@ my_exec_shell_imgact(struct image_params *imgp)
 	}
 
 	imgp->ip_flags |= IMGPF_INTERPRET;
+
+        imgp->ip_origvattr->va_mode  &= ~(VSUID | VSGID);
 //	imgp->ip_interp_sugid_fd = -1;
 	imgp->ip_interp_buffer[0] = '\0';
 

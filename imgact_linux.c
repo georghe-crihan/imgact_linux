@@ -14,26 +14,24 @@
 #include <sys/elf_common.h>
 #include <elf.h>
 
+#include "imgact_linux.h"
+
 // Default path
-#define INTERP_PATH "/opt/local/libexec/noah -p -m /compat/linux -o /var/log/noah/output_%d.log -w /var/log/noah/warning_%d.log -s /var/log/noah/strace_%d.log"
+#define INTERP_PATH "/opt/local/libexec/noah -e -m /compat/linux -o /var/log/noah/output_%d.log -w /var/log/noah/warning_%d.log -s /var/log/noah/strace_%d.log"
 
 // Maybe sometime add a sysctl for setting interp_bufr...
-static char interp_bufr[IMG_SHSIZE];
-
-#define SIZE_MAXPTR             8                               /* 64 bits */
-#define SIZE_IMG_STRSPACE       (NCARGS - 2 * SIZE_MAXPTR)
-
-typedef int (*ex_imgact_t)(struct image_params *);
+char interp_bufr[IMG_SHSIZE];
 
 extern struct execsw {
 	int (*ex_imgact)(struct image_params *);
 	const char *ex_name;
 } execsw[];
 
-static ex_imgact_t orig_shell_imgact;
+ex_imgact_t orig_shell_imgact;
+
 static int orig_shell_entry = -1;
 
-static int
+int
 elf_check_header(const Elf_Ehdr *hdr)
 {
 	if (!IS_ELF(*hdr) ||
@@ -50,12 +48,6 @@ elf_check_header(const Elf_Ehdr *hdr)
 
 	return 0;
 }
-
-#if 0
-#include "exec_shell_imgact-1504.15.3.c"
-#else
-#include "exec_shell_imgact-4570.1.46.c"
-#endif
 
 kern_return_t imgact_linux_start (kmod_info_t * ki, void * d) {
 	int e;
@@ -76,7 +68,6 @@ kern_return_t imgact_linux_start (kmod_info_t * ki, void * d) {
 		printf("exec_shell_imgact() rerouted.\n");
     return KERN_SUCCESS;
 }
-
 
 kern_return_t imgact_linux_stop (kmod_info_t * ki, void * d) {
     execsw[orig_shell_entry].ex_imgact = orig_shell_imgact;

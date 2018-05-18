@@ -10,11 +10,12 @@ EXTROOT = /Library/Extensions
 SDK_ROOT = /Developer
 SYSROOT = $(SDK_ROOT)/SDKs/MacOSX10.6.sdk
 OSX_VERSION = 10.6
+XNU_VERSION = 4570.1.46
 
 #CC = $(SDK_ROOT)/usr/bin/gcc-4.0
 #LD = $(SDK_ROOT)/usr/bin/gcc-4.0
 CC = $(SDK_ROOT)/usr/bin/gcc
-LD = $(SDK_ROOT)/usr/bin/gcc
+LD = $(CC)
 
 # detect current kernel architecture
 CPU  := $(shell uname -m)
@@ -48,19 +49,23 @@ INCS += -I$(SYSROOT)/usr/include \
 	-I.
 
 KEXT_OBJS = \
+	exec_shell_imgact.o \
 	imgact_linux.o
 
 all: imgact_linux.kmod 
 
+exec_shell_imgact.o: exec_shell_imgact-$(XNU_VERSION).c
+	$(CC) $(ARCH) -no-cpp-precomp -nostdinc $(CFLAGS) $(CFLAGS_KERN) $(DEFS) $(DEFS_KERN) $(KERN_INCS) $(INCS) $(WARNS) -c -o exec_shell_imgact.o exec_shell_imgact-$(XNU_VERSION).c
+
 imgact_linux.o: imgact_linux.c
-	$(CC) $(ARCH) -isysroot $(SYSROOT) -no-cpp-precomp -nostdinc $(CFLAGS) $(CFLAGS_KERN) $(DEFS) $(DEFS_KERN) $(KERN_INCS) $(INCS) $(WARNS) -c -o imgact_linux.o imgact_linux.c 
+	$(CC) $(ARCH) -isysroot $(SYSROOT) -no-cpp-precomp -nostdinc $(CFLAGS) $(CFLAGS_KERN) $(DEFS) $(DEFS_KERN) $(KERN_INCS) $(INCS) $(WARNS) -c -o imgact_linux.o imgact_linux.c
 
 imgact_linux.kmod: $(KEXT_OBJS)
-	$(LD) $(ARCH) -isysroot $(SYSROOT) \
+	$(LD) $(ARCH) \
 		-mmacosx-version-min=$(OSX_VERSION) \
 		-Xlinker -kext \
-		-nostdlib -r -mlong-branch -static -fno-builtin \
-		-lkmod -lcc_kext -o imgact_linux.kmod $(KEXT_OBJS)
+		-nostdlib -fno-builtin \
+		-lcc_kext -o imgact_linux.kmod $(KEXT_OBJS)
 
 Info.plist:
 	./mkinfo.sh Info.plist
