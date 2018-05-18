@@ -3,7 +3,20 @@
 OSX kext to allow running of linux binary executables (through Noah ABI)
 transparently.
 
-I.e. 
+Its functionality is somewhat an OSX equivalent to that of Linux `binfmt-misc`.
+
+## Contents
+* [Usage](#usage)
+* [A word of caution](#a_word_of_cation)
+* [Credits](#credits)
+* [Building](#building)
+  * [Introduction](#introduction)
+  * [Make](#make)
+    * [Make targets](#make_targets)
+* [Adding support for your kernel](#adding_support_for_your_kernel)
+* [Precompiled binaries](#precompiled_binaries)
+
+## Usage
 1. set the executable mode bits for a Linux ELF
 2. load the `imgact_linux` kext
 3. make sure you have Noah binary installed under _/opt/local/libexec/noah_
@@ -15,6 +28,13 @@ in Finder or launching from the shell.
 
 NB: many of the above settings could be altered by modifying the
 `imgact_linux` sysctl: `kern.imgact_linux.interpreter_commandline`.
+
+The activator kext is strongly kernel version dependent and has to be rebuilt
+after every version change, see [mkinfo.sh](mkinfo.sh).
+
+Installing and loading under today's OSX requires either SPI switched off.
+
+Also, read the next section carefully, before you proceed.
 
 ## A word of caution
 This KEXT is extremely XNU version-dependent. It will certainly crash your
@@ -29,12 +49,16 @@ Sadly, unlike FreeBSD, Apple does  not provide any mechanisms to install custom
 image activators, hence the inevitable hack.
 
 On the other hand, it does work, if your kernel matches the version of
-_exec_shell_imgact()_ the kext would use. See the Building section for more
-details.
+_exec_shell_imgact()_ the kext would use. See the [Building](#building)
+section for more details.
+
+`I provide no waranties express or implied whatsoever and disclaim any
+disclaim any liability. Use at your own risk.`
 
 You have been warned!
 
-## Inspired by: 
+## Credits
+This work is inspired by:
 * [xbinary](http://osxbook.com/software/xbinary),
 * [SyscallExt](http://osxbook.com/book/bonus/ancient/syscall) both by Amit Singh, 
 * [FreeBSD kernel exec_elf_imgact()](http://fxr.watson.org/fxr/source/kern/imgact_elf.c?v=FREEBSD4#L466)
@@ -51,15 +75,11 @@ Special thanks go to Robert Watson of the FreeBSD project for his marvelous
 It should compile without the XCode GUI via _make(1)_ and the command line
 tools.
 
-NB: The 32-bit kext calls the kernel directly, not via the KPI ABI but through
+The 32-bit kext calls the kernel directly, not via the KPI ABI but through
 com.apple.kernel, so no proxy kext is required.
 
-The activator kext is strongly kernel version dependent and has to be rebuilt
-after every version change, see [mkinfo.sh](mkinfo.sh).
-
-Installing and loading under today's OSX requires either SPI switched off.
-
-NB: Signing via the _codesign(1)_ tool, perhaps with a self-signed CA, certificate installed locally just won't work.
+NB: Signing via the _codesign(1)_ tool, perhaps with a self-signed CA,
+certificate installed locally just won't work. Alas, you have to disable SIP...
 
 ### Make
 Edit the Makefile to set the appropriate SDK, SYSROOT and CC and most
@@ -78,10 +98,10 @@ _exec_shell_imgact-*.c_ file.
 * `install` - install the `imgact_linux` kext to _/Library/Extensions_ 
 * `test` - implies `install`, loads the kext into the kernel 
 
-#### Adding support for your kernel
+## Adding support for your kernel
 
-NB1: You're on your own, at your own risk, I do not provide any warranties,
-express or implied and hereby disclaim any liability whatsoever.
+NB1: `You're on your own, at your own risk, I do not provide any warranties,
+express or implied and hereby disclaim any liability whatsoever.`
 
 NB2: This is not a primer, you have to have some kernel experience to do this
 safely.
@@ -147,3 +167,8 @@ allow the system run normal shell scripts
 YMMV, as it's a non-trivial, creative process!
 
 You can always use the provided _exec_shell_imgact-*.c_ files as reference.
+
+## Precompiled binaries
+See the [binaries](binaries) directory.
+
+Run the _install.sh xnu_version_ to install the appropriate kext.
