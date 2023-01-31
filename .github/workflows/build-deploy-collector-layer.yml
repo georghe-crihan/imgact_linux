@@ -23,3 +23,6 @@ jobs:
       - name: Build Collector
         working-directory: collector
         run: make
+      - name: Install Collector - Remember the ARN
+        working-directory: collector
+        run: make publish-layer
