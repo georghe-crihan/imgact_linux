@@ -14,7 +14,7 @@ jobs:
       - name: Clone the Collector repository
         uses: actions/checkout@v3
         with: 
-          name: open-telemetry/opentelemetry-lambda
+          repository: open-telemetry/opentelemetry-lambda
           ref: refs/heads/main
       - name: Setup Golang
         uses: actions/setup-go@v2
